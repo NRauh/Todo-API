@@ -11,35 +11,30 @@ defmodule Todo.ItemChannelTest do
     {:ok, socket: socket}
   end
 
-  test "adds new items", %{socket: socket} do
-
-    push socket, "new_item", %{
+  test "can broadcast item" do
+    item = %{
+      :id => 1,
+      :title => "hello world",
+      :due_date => "2017-01-02",
+      :description => "say hi to the world",
+      :complete => false}
+    Todo.ItemChannel.broadcast_item(item)
+    assert_broadcast "got_item", %{
       "item" => %{
-        "title" => "Hello World",
+        "id" => 1,
+        "title" => "hello world",
         "due_date" => "2017-01-02",
-        "description" => "A thing",
+        "description" => "say hi to the world",
         "complete" => false}}
-    assert_broadcast "new_item", %{
-      "item" => %{
-        "title" => "Hello World",
-        "due_date" => "2017-01-02",
-        "description" => "A thing",
-        "complete" => false}}
-    assert Repo.get_by(Todo.Item, title: "Hello World")
   end
 
-  test "ping replies with status ok", %{socket: socket} do
-    ref = push socket, "ping", %{"hello" => "there"}
-    assert_reply ref, :ok, %{"hello" => "there"}
+  test "can broadcast which should be removed" do
+    Todo.ItemChannel.remove_item(1)
+    assert_broadcast "remove_item", %{"id" => 1}
   end
 
-  test "shout broadcasts to item:lobby", %{socket: socket} do
-    push socket, "shout", %{"hello" => "all"}
-    assert_broadcast "shout", %{"hello" => "all"}
-  end
-
-  test "broadcasts are pushed to the client", %{socket: socket} do
-    broadcast_from! socket, "broadcast", %{"some" => "data"}
-    assert_push "broadcast", %{"some" => "data"}
+  test "can broadcast which item should change it's completion" do
+    Todo.ItemChannel.change_completion(1)
+    assert_broadcast "change_completion", %{"id" => 1}
   end
 end

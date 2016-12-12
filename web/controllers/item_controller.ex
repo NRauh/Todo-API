@@ -4,7 +4,8 @@ defmodule Todo.ItemController do
   alias Todo.Item
 
   def index(conn, _params) do
-    items = Repo.all(Item)
+    query = from(i in Item, order_by: i.inserted_at)
+    items = Repo.all(query)
     render(conn, "index.json", items: items)
   end
 
@@ -13,6 +14,7 @@ defmodule Todo.ItemController do
 
     case Repo.insert(changeset) do
       {:ok, item} ->
+        Todo.ItemChannel.broadcast_item(item)
         conn
         |> put_status(:created)
         |> put_resp_header("location", item_path(conn, :show, item))
@@ -35,6 +37,7 @@ defmodule Todo.ItemController do
 
     case Repo.update(changeset) do
       {:ok, item} ->
+        Todo.ItemChannel.change_completion(item.id)
         render(conn, "show.json", item: item)
       {:error, changeset} ->
         conn
@@ -50,6 +53,7 @@ defmodule Todo.ItemController do
     # it to always work (and if it does not, it will raise).
     Repo.delete!(item)
 
+    Todo.ItemChannel.remove_item(id)
     send_resp(conn, :no_content, "")
   end
 end
